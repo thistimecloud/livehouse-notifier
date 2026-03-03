@@ -179,20 +179,23 @@ def send_email(subject: str, body: str):
     if not all([EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_RECEIVER]):
         print("Email configuration is incomplete. Skipping.")
         return
+    # カンマ区切りで複数の受信者に対応
+    receivers = [r.strip() for r in EMAIL_RECEIVER.split(',')]
     msg = MIMEMultipart()
     msg['From'] = EMAIL_SENDER
-    msg['To'] = EMAIL_RECEIVER
+    msg['To'] = ', '.join(receivers)
     msg['Subject'] = subject
     msg.attach(MIMEText(body, 'plain'))
     try:
         server = smtplib.SMTP('smtp.gmail.com', 587)
         server.starttls()
         server.login(EMAIL_SENDER, EMAIL_PASSWORD)
-        server.send_message(msg)
+        server.sendmail(EMAIL_SENDER, receivers, msg.as_string())
         server.quit()
-        print("Email sent successfully.")
+        print(f"Email sent successfully to {len(receivers)} recipient(s).")
     except Exception as e:
         print(f"Failed to send email: {e}")
+
 
 def send_discord_webhook(message: str):
     if not DISCORD_WEBHOOK_URL:
