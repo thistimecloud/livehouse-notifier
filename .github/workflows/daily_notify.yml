@@ -2,8 +2,12 @@ name: Daily Livehouse Notifier
 
 on:
   schedule:
+    # 毎日 日本時間 12:00 (UTC 03:00) に実行
     - cron: '0 3 * * *'
-  workflow_dispatch:
+  workflow_dispatch: # GitHubの画面から手動実行も可能にする設定
+
+permissions:
+  contents: write  # docs/index.html をコミット・プッシュするために必要
 
 jobs:
   run-notifier:
@@ -32,3 +36,12 @@ jobs:
         EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
         DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
       run: python main.py
+
+    - name: Commit and push updated HTML
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git add docs/index.html
+        git diff --cached --quiet || git commit -m "Update live schedule [$(date +'%Y-%m-%d')]"
+        git push
+
