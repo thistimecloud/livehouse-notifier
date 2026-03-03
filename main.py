@@ -30,7 +30,10 @@ TARGETS = {
     "FEVER": "https://www.fever-popo.com/schedule/",
     "BASEMENTBAR": "https://toos.co.jp/basementbar/",
     "SHELTER": "https://www.loft-prj.co.jp/schedule/shelter/",
-    "Nine Spices": "https://9spices.rinky.info/schedule/"
+    "Nine Spices": "https://9spices.rinky.info/schedule/",
+    "吉祥寺WARP": "http://warp.rinky.info/schedules",
+    "渋谷クラブクアトロ": "https://www.club-quattro.com/shibuya/",
+    "恵比寿リキッドルーム": "https://www.liquidroom.net/schedule",
 }
 
 def setup_gemini():
@@ -168,14 +171,18 @@ def extract_schedule_with_gemini(venue_name: str, text_content: str, target_date
 
 # --- Formatting & Notification ---
 
-def format_message(results: dict, target_date: datetime.date) -> str:
+def format_message(results: dict, target_date: datetime.date, url_map: dict = None) -> str:
     """Formats the extracted results into a plain text message string matching previous nice format."""
     date_str = target_date.strftime("%m/%d(%a)")
     message = f"🎸 本日 {date_str} のライブ情報 🎸\n"
     message += "=" * 30 + "\n"
     
     for venue, events in results.items():
-        message += f"\n📍 【{venue}】\n"
+        url = url_map.get(venue, "") if url_map else ""
+        if url:
+            message += f"\n📍 【[{venue}]({url})】\n"
+        else:
+            message += f"\n📍 【{venue}】\n"
         # Normalize to list (supports both old dict format and new list format)
         if isinstance(events, dict):
             events = [events]
@@ -264,7 +271,7 @@ def main():
         time.sleep(15)
             
     print("\nFormatting message...")
-    final_message = format_message(all_results, today)
+    final_message = format_message(all_results, today, url_map=TARGETS)
     
     print("\n--- Message Preview ---")
     print(final_message)
