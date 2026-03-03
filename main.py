@@ -87,21 +87,25 @@ def extract_schedule_with_gemini(venue_name: str, text_content: str, target_date
 
     prompt = f"""
 以下はライブハウス「{venue_name}」のスケジュールページのテキストデータです。
-この中から、指定された日付（{date_str_long} または {date_str_short} または {date_str_short2} または単なる「{dd}日」など）に行われるライブ・イベントの情報を抽出してください。
+この中から、指定された日付（{date_str_long} または {date_str_short} または {date_str_short2} または単なる「{dd}日」など）に行われるライブ・イベントの情報をすべて抽出してください。
 
 テキストには複数の日付の情報が含まれていますが、必ず指定された日の情報だけを抜き出してください。
-もし当日にイベントが全く見つからない場合は、必ず {{"has_live": false}} を返してください。
+同じ日に複数のイベントがある場合は、すべて含めてください。
+もし当日にイベントが全く見つからない場合は、必ず [{{
+"has_live": false}}] を返してください。
 （※"詳細未定"や"TBA"のような表記でも、何かが記載されていれば"has_live": trueとして抽出してください）
 
-抽出結果は、必ず以下のJSONフォーマットのみ（マークダウンのコードブロックは不要、波括弧から始めること）で返してください:
-{{
-  "has_live": true,
-  "title": "イベントのタイトル",
-  "artists": ["アーティスト名1", "アーティスト名2"],
-  "open_start": "開場 / 開演時間",
-  "adv_door": "前売 / 当日などのチケット料金",
-  "remarks": "その他の特記事項（あれば）"
-}}
+抽出結果は、必ず以下のJSON配列フォーマットのみ（マークダウンのコードブロックは不要、角括弧から始めること）で返してください。イベントが1つの場合も必ず配列にしてください:
+[
+  {{
+    "has_live": true,
+    "title": "イベントのタイトル",
+    "artists": ["アーティスト名1", "アーティスト名2"],
+    "open_start": "開場 / 開演時間",
+    "adv_door": "前売 / 当日などのチケット料金",
+    "remarks": "その他の特記事項（あれば）"
+  }}
+]
 
 --- テキストデータ ---
 {text_content}
@@ -131,25 +135,36 @@ def extract_schedule_with_gemini(venue_name: str, text_content: str, target_date
     try:
         result_text = response.text.strip()
         
-        # Extract JSON substring
-        start_idx = result_text.find('{')
-        end_idx = result_text.rfind('}')
+        # Extract JSON array first, then fallback to object
+        start_idx = result_text.find('[')
+        end_idx = result_text.rfind(']')
         
         if start_idx != -1 and end_idx != -1:
             json_str = result_text[start_idx:end_idx+1]
             try:
-                # Try standard json
-                return json.loads(json_str)
+                parsed = json.loads(json_str)
             except json.JSONDecodeError:
-                # Fallback to python ast evaluation with boolean replacements
                 json_str = json_str.replace("true", "True").replace("false", "False")
-                return ast.literal_eval(json_str)
+                parsed = ast.literal_eval(json_str)
+            # Ensure always a list
+            return parsed if isinstance(parsed, list) else [parsed]
         else:
-            return {"error": "AI出力からJSON形式が見つかりませんでした"}
+            # Fallback: try to parse as a single object
+            start_idx = result_text.find('{')
+            end_idx = result_text.rfind('}')
+            if start_idx != -1 and end_idx != -1:
+                json_str = result_text[start_idx:end_idx+1]
+                try:
+                    parsed = json.loads(json_str)
+                except json.JSONDecodeError:
+                    json_str = json_str.replace("true", "True").replace("false", "False")
+                    parsed = ast.literal_eval(json_str)
+                return [parsed]
+            return [{"error": "AI出力からJSON形式が見つかりませんでした"}]
             
     except Exception as e:
         print(f"Parsing error for {venue_name}: {e}")
-        return {"error": "AI結果の解析に失敗しました"}
+        return [{"error": "AI結果の解析に失敗しました"}]
 
 # --- Formatting & Notification ---
 
@@ -159,18 +174,28 @@ def format_message(results: dict, target_date: datetime.date) -> str:
     message = f"🎸 本日 {date_str} のライブ情報 🎸\n"
     message += "=" * 30 + "\n"
     
-    for venue, info in results.items():
+    for venue, events in results.items():
         message += f"\n📍 【{venue}】\n"
-        if "error" in info:
-            message += f"⚠️ 情報取得エラー: {info.get('error', 'Unknown Error')}\n"
-        elif not info.get("has_live"):
+        # Normalize to list (supports both old dict format and new list format)
+        if isinstance(events, dict):
+            events = [events]
+        
+        live_events = [e for e in events if isinstance(e, dict) and e.get("has_live")]
+        errors = [e for e in events if isinstance(e, dict) and "error" in e]
+        
+        if errors:
+            message += f"⚠️ 情報取得エラー: {errors[0].get('error', 'Unknown Error')}\n"
+        elif not live_events:
             message += "❌ 公演なし / 予定なし\n"
         else:
-            if info.get("title"): message += f"🏷️ {info['title']}\n"
-            if info.get("artists"): message += f"🎤 {', '.join(info['artists'])}\n"
-            if info.get("open_start"): message += f"⌚ {info['open_start']}\n"
-            if info.get("adv_door"): message += f"💴 {info['adv_door']}\n"
-            if info.get("remarks"): message += f"📝 {info['remarks']}\n"
+            for i, info in enumerate(live_events):
+                if len(live_events) > 1:
+                    message += f"--- 公演 {i+1} ---\n"
+                if info.get("title"): message += f"🏷️ {info['title']}\n"
+                if info.get("artists"): message += f"🎤 {', '.join(info['artists'])}\n"
+                if info.get("open_start"): message += f"⌚ {info['open_start']}\n"
+                if info.get("adv_door"): message += f"💴 {info['adv_door']}\n"
+                if info.get("remarks"): message += f"📝 {info['remarks']}\n"
         message += "-" * 30 + "\n"
         
     return message
@@ -195,7 +220,6 @@ def send_email(subject: str, body: str):
         print(f"Email sent successfully to {len(receivers)} recipient(s).")
     except Exception as e:
         print(f"Failed to send email: {e}")
-
 
 def send_discord_webhook(message: str):
     if not DISCORD_WEBHOOK_URL:
