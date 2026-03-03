@@ -9,6 +9,7 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from bs4 import BeautifulSoup
 import google.generativeai as genai
+from playwright.sync_api import sync_playwright
 
 # --- Configuration ---
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
@@ -42,37 +43,48 @@ def setup_gemini():
     genai.configure(api_key=GEMINI_API_KEY)
 
 def fetch_website_text(url: str, venue_name: str, target_date: datetime.date) -> str:
-    """Fetches text content from a URL via BeautifulSoup."""
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    }
-    
+    """Fetches text content from a URL via BeautifulSoup or Playwright for dynamic sites."""
     # Handle dates in URL if necessary
     target_url = url
     if "chikamatsu" in target_url or "chikamichi" in target_url:
         target_url = f"{url}{target_date.year:04d}/{target_date.month:02d}/"
     elif venue_name in ["Three", "BASEMENTBAR"]:
-        # TOOS group uses dynamic paths for their event calendars: e.g., https://www.toos.co.jp/3/events/event/on/2026/02/
         base = "events/event/on/" if venue_name == "Three" else "event/on/"
         target_url = f"{url}{base}{target_date.year:04d}/{target_date.month:02d}/"
     elif venue_name == "FEVER":
         target_url = f"{url}{target_date.year:04d}/{target_date.month:02d}/"
-        
+
+    # For TOKIO TOKYO (Nuxt SPA), we MUST use Playwright to execute JS
+    if venue_name == "TOKIO TOKYO":
+        try:
+            with sync_playwright() as p:
+                browser = p.chromium.launch(headless=True)
+                page = browser.new_page()
+                # Set a common user-agent
+                page.set_extra_http_headers({"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"})
+                page.goto(target_url, wait_until="networkidle", timeout=30000)
+                # Wait a bit more for the Nuxt hydration/API call to finish
+                page.wait_for_timeout(3000)
+                content = page.content()
+                browser.close()
+                soup = BeautifulSoup(content, 'html.parser')
+                return soup.get_text(separator='\n', strip=True)[:15000]
+        except Exception as e:
+            print(f"Playwright error for {venue_name}: {e}")
+            return None
+
+    # For other sites, requests is faster and usually sufficient
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
     try:
         response = requests.get(target_url, headers=headers, timeout=15)
         response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
         
-        # TOKIO TOKYO is a Nuxt app; its text is empty, the data is in script tags.
-        if venue_name != "TOKIO TOKYO":
-            for script in soup(["script", "style"]):
-                script.decompose()
-            text = soup.get_text(separator='\n', strip=True)
-        else:
-            # For TOKIO TOKYO, extract everything (or at least the JS payload)
-            text = str(soup)
-            
-        # Limit text size to prevent exceeding token limits
+        for script in soup(["script", "style"]):
+            script.decompose()
+        text = soup.get_text(separator='\n', strip=True)
         return text[:15000]
     except Exception as e:
         print(f"Error fetching {target_url}: {e}")
