@@ -4,157 +4,241 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>今日のライブ</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Inter:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #111110;
+      --fg: #f0ece4;
+      --muted: #555550;
+      --accent: #f5e642;
+      --live-fg: #111110;
+      --err-bg: #ff4136;
+      --rule: rgba(240,236,228,0.1);
+    }
     body {
-      background: #0c0c14;
-      color: #e0e0f0;
-      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
       min-height: 100vh;
-      padding: 16px;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 0 20px 60px;
     }
     header {
-      text-align: center;
-      padding: 28px 0 20px;
+      padding: 48px 0 36px;
+      border-bottom: 1px solid var(--rule);
     }
-    header h1 {
-      font-size: 1.8rem;
-      font-weight: 700;
-      background: linear-gradient(135deg, #a78bfa, #7c3aed);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    header p {
-      color: #8888aa;
-      font-size: 0.85rem;
-      margin-top: 6px;
-    }
-    .cards {
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      max-width: 540px;
-      margin: 0 auto;
-    }
-    .card {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(167,139,250,0.2);
-      border-radius: 14px;
-      padding: 16px 18px;
-      backdrop-filter: blur(8px);
-    }
-    .venue-name {
-      display: block;
-      font-weight: 700;
-      font-size: 0.8rem;
-      letter-spacing: 0.08em;
+    .site-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 900;
+      font-size: clamp(3rem, 14vw, 5.5rem);
+      line-height: 0.92;
+      letter-spacing: -0.02em;
       text-transform: uppercase;
-      color: #a78bfa;
-      text-decoration: none;
+      color: var(--fg);
+    }
+    .site-subtitle {
+      margin-top: 14px;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .site-date {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+    }
+    .row {
+      border-bottom: 1px solid var(--rule);
+      padding: 22px 0;
+    }
+    .row-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
       margin-bottom: 8px;
     }
-    .venue-name:hover { text-decoration: underline; }
-    .event-title {
-      font-size: 1rem;
-      font-weight: 600;
-      color: #f0f0ff;
+    .venue-link {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.15rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--fg);
+      text-decoration: none;
+    }
+    .venue-link:hover { color: var(--accent); transition: color 0.15s; }
+    .badge {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      padding: 2px 6px;
+      border-radius: 2px;
+    }
+    .badge-live { background: var(--accent); color: var(--live-fg); }
+    .badge-off  { background: transparent; color: var(--muted); border: 1px solid var(--muted); }
+    .badge-error{ background: var(--err-bg); color: #fff; }
+    .ev-num {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.75rem;
+      color: var(--accent);
+      letter-spacing: 0.1em;
       margin-bottom: 4px;
     }
-    .event-artists {
-      font-size: 0.88rem;
-      color: #c0c0e0;
-      margin-bottom: 6px;
+    .ev-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: clamp(1.3rem, 5vw, 1.7rem);
+      line-height: 1.1;
+      color: var(--fg);
+      margin-bottom: 4px;
     }
-    .event-meta {
-      font-size: 0.8rem;
-      color: #8888aa;
-      margin-top: 3px;
+    .ev-artists {
+      font-size: 12px;
+      color: var(--fg);
+      opacity: 0.7;
+      margin-bottom: 4px;
     }
-    .event-sep {
-      font-size: 0.75rem;
-      color: #7c3aed;
-      margin: 10px 0 6px;
+    .ev-meta {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
     }
     .no-live {
-      font-size: 0.85rem;
-      color: #555577;
+      font-size: 12px;
+      color: var(--muted);
     }
     footer {
-      text-align: center;
-      color: #444466;
-      font-size: 0.75rem;
-      padding: 28px 0 16px;
+      margin-top: 48px;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>🎸 今日のライブ</h1>
-    <p>2026年03月03日 (Tue) 更新</p>
+    <h1 class="site-title">今日の<br>ライブ</h1>
+    <p class="site-subtitle">Tokyo Live Schedule</p>
+    <p class="site-date">2026.03.03 (火)</p>
   </header>
-  <div class="cards">
-        <div class="card">
-          <a href="https://www-shibuya.jp/schedule/" target="_blank" class="venue-name">WWW/X</a>
-          <p class="event-sep">── 公演 1 ──</p><p class="event-title">「青木陽菜 Presents Hina Festival 2026」</p><p class="event-artists">🎤 青木陽菜, アザミ, シユイ</p><p class="event-meta">⏰ 18:00 / 19:00</p><p class="event-meta">📝 WWW X</p><p class="event-sep">── 公演 2 ──</p><p class="event-title">ONE-MAN TOUR "VISION"</p><p class="event-artists">🎤 水中スピカ</p><p class="event-meta">⏰ 18:00 / 19:00</p><p class="event-meta">📝 WWW</p>
+  <main>
+        <div class="row">
+          <div class="row-head">
+            <a href="https://www-shibuya.jp/schedule/" target="_blank" class="venue-link">WWW/X</a>
+            <span class="badge badge-live">LIVE</span>
+          </div>
+          <div class="row-body"><p class="ev-num">/ 1</p><p class="ev-title">「青木陽菜 Presents Hina Festival 2026」</p><p class="ev-artists">青木陽菜 / アザミ / シユイ</p><p class="ev-meta">18:00 / 19:00</p><p class="ev-meta">WWW X</p><p class="ev-num">/ 2</p><p class="ev-title">ONE-MAN TOUR "VISION"</p><p class="ev-artists">水中スピカ</p><p class="ev-meta">18:00 / 19:00</p><p class="ev-meta">WWW</p></div>
         </div>
-        <div class="card">
-          <a href="https://shibuya-o.com/crest/schedule/" target="_blank" class="venue-name">O-Crest</a>
-          <p class="event-title">yosugala単独「今日はひな祭り！2026」</p><p class="event-artists">🎤 yosugala</p><p class="event-meta">⏰ OPEN 18:30 / START 19:00</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="https://shibuya-o.com/crest/schedule/" target="_blank" class="venue-link">O-Crest</a>
+            <span class="badge badge-live">LIVE</span>
+          </div>
+          <div class="row-body"><p class="ev-title">yosugala単独「今日はひな祭り！2026」</p><p class="ev-artists">yosugala</p><p class="ev-meta">OPEN 18:30 / START 19:00</p></div>
         </div>
-        <div class="card">
-          <a href="https://tokio.world/schedule" target="_blank" class="venue-name">TOKIO TOKYO</a>
-          <p class="no-live">❌ 公演なし / 予定なし</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="https://tokio.world/schedule" target="_blank" class="venue-link">TOKIO TOKYO</a>
+            <span class="badge badge-off">—</span>
+          </div>
+          <div class="row-body"><p class="no-live">公演なし</p></div>
         </div>
-        <div class="card">
-          <a href="http://s-era.jp/schedule" target="_blank" class="venue-name">ERA</a>
-          <p class="event-title">HALL RENTAL</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="http://s-era.jp/schedule" target="_blank" class="venue-link">ERA</a>
+            <span class="badge badge-off">—</span>
+          </div>
+          <div class="row-body"><p class="no-live">公演なし</p></div>
         </div>
-        <div class="card">
-          <a href="https://www.toos.co.jp/3/" target="_blank" class="venue-name">Three</a>
-          <p class="event-title">かましかましかまし</p><p class="event-artists">🎤 ザ・ヒーローズ, しんきろうのまち</p><p class="event-meta">⏰ OPEN19:00／START19:30</p><p class="event-meta">💴 ADV￥3,000-（+1Drink ¥600-）</p><p class="event-meta">📝 10代無料（ドリンク代¥600のみ）※身分証必須</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="https://www.toos.co.jp/3/" target="_blank" class="venue-link">Three</a>
+            <span class="badge badge-live">LIVE</span>
+          </div>
+          <div class="row-body"><p class="ev-title">かましかましかまし</p><p class="ev-artists">ザ・ヒーローズ / しんきろうのまち</p><p class="ev-meta">OPEN19:00／START19:30　ADV￥3,000-（+1Drink ¥600-）</p><p class="ev-meta">10代無料（ドリンク代¥600のみ）※身分証必須</p></div>
         </div>
-        <div class="card">
-          <a href="https://chikamatsu-nite.com/schedule/" target="_blank" class="venue-name">近松</a>
-          <p class="event-title">HOLIC pre.『NEW DAWN』</p><p class="event-artists">🎤 HOLIC</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="https://chikamatsu-nite.com/schedule/" target="_blank" class="venue-link">近松</a>
+            <span class="badge badge-live">LIVE</span>
+          </div>
+          <div class="row-body"><p class="ev-title">HOLIC pre.『NEW DAWN』</p><p class="ev-artists">HOLIC</p></div>
         </div>
-        <div class="card">
-          <a href="https://chikamichi-otemae.com/chikamichi/" target="_blank" class="venue-name">近道</a>
-          <p class="event-title">しろつめ備忘録 pre. 『liminal state』</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="https://chikamichi-otemae.com/chikamichi/" target="_blank" class="venue-link">近道</a>
+            <span class="badge badge-live">LIVE</span>
+          </div>
+          <div class="row-body"><p class="ev-title">しろつめ備忘録 pre. 『liminal state』</p></div>
         </div>
-        <div class="card">
-          <a href="https://www.mona-records.com/" target="_blank" class="venue-name">mona records</a>
-          <p class="event-title">mona records22nd anniversary ぽらりすvol.15</p><p class="event-artists">🎤 上川周平とじゃがいもフィルハーモニー, ナパポーン（THE BERSERKERS）, 結構生活, うつろ舟</p><p class="event-meta">⏰ open 18:30 / start 19:00</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="https://www.mona-records.com/" target="_blank" class="venue-link">mona records</a>
+            <span class="badge badge-live">LIVE</span>
+          </div>
+          <div class="row-body"><p class="ev-title">mona records22nd anniversary ぽらりすvol.15</p><p class="ev-artists">上川周平とじゃがいもフィルハーモニー / ナパポーン（THE BERSERKERS） / 結構生活 / うつろ舟</p><p class="ev-meta">open 18:30 / start 19:00</p></div>
         </div>
-        <div class="card">
-          <a href="https://www.fever-popo.com/schedule/" target="_blank" class="venue-name">FEVER</a>
-          <p class="event-title">sometimes TOUR "We Have No Message"</p><p class="event-artists">🎤 Sometimes, Dizzy Sunfist, MARIO2BLOCK</p><p class="event-meta">⏰ OPEN 18:00 / START 18:30</p><p class="event-meta">💴 ADV ￥4000 (+1drink) THANK YOU SOLD OUT!!!</p><p class="event-meta">📝 ※1drink ￥600 ※未就学児童入場可能/6歳以上チケット必要</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="https://www.fever-popo.com/schedule/" target="_blank" class="venue-link">FEVER</a>
+            <span class="badge badge-live">LIVE</span>
+          </div>
+          <div class="row-body"><p class="ev-title">sometimes TOUR "We Have No Message"</p><p class="ev-artists">Sometimes / Dizzy Sunfist / MARIO2BLOCK</p><p class="ev-meta">OPEN 18:00 / START 18:30　ADV ￥4000 (+1drink)</p><p class="ev-meta">THANK YOU SOLD OUT!!!
+※1drink ￥600
+※未就学児童入場可能/6歳以上チケット必要</p></div>
         </div>
-        <div class="card">
-          <a href="https://toos.co.jp/basementbar/" target="_blank" class="venue-name">BASEMENTBAR</a>
-          <p class="event-title">333 Release ONE MAN Party</p><p class="event-artists">🎤 333</p><p class="event-meta">⏰ OPEN19:00／START20:00</p><p class="event-meta">💴 ADV￥3,300-／DOOR￥3,800-（+1Drink ¥600-）</p><p class="event-meta">📝 【 チケット予約 】 333 Release ONE MAN…</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="https://toos.co.jp/basementbar/" target="_blank" class="venue-link">BASEMENTBAR</a>
+            <span class="badge badge-live">LIVE</span>
+          </div>
+          <div class="row-body"><p class="ev-title">333 Release ONE MAN Party</p><p class="ev-artists">333</p><p class="ev-meta">OPEN19:00／START20:00　ADV￥3,300-／DOOR￥3,800-（+1Drink ¥600-）</p><p class="ev-meta">【 チケット予約 】 333 Release ONE MAN…</p></div>
         </div>
-        <div class="card">
-          <a href="https://www.loft-prj.co.jp/schedule/shelter/" target="_blank" class="venue-name">SHELTER</a>
-          <p class="event-title">「Rakuten Books×PCI MUSIC Diggin’ Sound vol.3 powered by bazoo」</p><p class="event-artists">🎤 ルサンチマン, レイラ</p><p class="event-meta">⏰ OPEN 19:00 - START 19:30</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="https://www.loft-prj.co.jp/schedule/shelter/" target="_blank" class="venue-link">SHELTER</a>
+            <span class="badge badge-live">LIVE</span>
+          </div>
+          <div class="row-body"><p class="ev-title">「Rakuten Books×PCI MUSIC Diggin’ Sound vol.3 powered by bazoo」</p><p class="ev-artists">ルサンチマン / レイラ</p><p class="ev-meta">OPEN 19:00 - START 19:30</p></div>
         </div>
-        <div class="card">
-          <a href="https://9spices.rinky.info/schedule/" target="_blank" class="venue-name">Nine Spices</a>
-          <p class="event-title">ピューパ!! 単独ライブ 「¥1000握りしめて来て!! 今日は楽しい無銭祭り!!」</p><p class="event-artists">🎤 ピューパ!!</p><p class="event-meta">⏰ 19:00 / 19:30</p><p class="event-meta">💴 ADV ￥0 / DOOR ￥1,000</p><p class="event-meta">📝 +1drink¥700</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="https://9spices.rinky.info/schedule/" target="_blank" class="venue-link">Nine Spices</a>
+            <span class="badge badge-live">LIVE</span>
+          </div>
+          <div class="row-body"><p class="ev-title">ピューパ!! 単独ライブ 「¥1000握りしめて来て!! 今日は楽しい無銭祭り!!」</p><p class="ev-artists">ピューパ!!</p><p class="ev-meta">OPEN 19:00 / START 19:30　ADV ￥0 / DOOR ￥1,000</p><p class="ev-meta">(+1drink¥700)</p></div>
         </div>
-        <div class="card">
-          <a href="http://warp.rinky.info/schedules" target="_blank" class="venue-name">吉祥寺WARP</a>
-          <p class="event-title">吉祥寺WARP pre. 【SANTERiA】</p><p class="event-artists">🎤 Warker’s, ニライカナイ, Tale Tap, Unknown liberty, NISHIDAS, TOWACHANG, 善明3005%, Kai Yamazawa</p><p class="event-meta">⏰ 18:00 / 18:45</p><p class="event-meta">💴 ¥2500 / ¥3000 (+1D)</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="http://warp.rinky.info/schedules" target="_blank" class="venue-link">吉祥寺WARP</a>
+            <span class="badge badge-live">LIVE</span>
+          </div>
+          <div class="row-body"><p class="ev-title">吉祥寺WARP pre. 【SANTERiA】</p><p class="ev-artists">Warker’s / ニライカナイ / Tale Tap / Unknown liberty / NISHIDAS / TOWACHANG / 善明3005% / Kai Yamazawa</p><p class="ev-meta">18:00 / 18:45　¥2500 / ¥3000 (+1D)</p></div>
         </div>
-        <div class="card">
-          <a href="https://www.club-quattro.com/shibuya/" target="_blank" class="venue-name">渋谷クラブクアトロ</a>
-          <p class="event-title">「ライブハウスは抜け出せない」</p><p class="event-artists">🎤 3markets[ ]</p><p class="event-meta">⏰ 18:00 / 19:00</p><p class="event-meta">💴 前売 ￥3,800</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="https://www.club-quattro.com/shibuya/" target="_blank" class="venue-link">渋谷クラブクアトロ</a>
+            <span class="badge badge-live">LIVE</span>
+          </div>
+          <div class="row-body"><p class="ev-title">「ライブハウスは抜け出せない」</p><p class="ev-artists">3markets[ ]</p><p class="ev-meta">18:00 / 19:00　前売 ￥3,800</p></div>
         </div>
-        <div class="card">
-          <a href="https://www.liquidroom.net/schedule" target="_blank" class="venue-name">恵比寿リキッドルーム</a>
-          <p class="event-title">TOUR 2025 “KANKEI FINAL”</p><p class="event-artists">🎤 SITUASION</p><p class="event-meta">⏰ 18:30 / 19:00</p><p class="event-meta">💴 優先(FC限定):¥5,000(税込・ドリンクチャージ別)手売りチケット:¥3,000(税込・ドリンクチャージ別)一般:¥2,500(税込・ドリンクチャージ別)後方:¥500(税込・ドリンクチャージ別)</p>
+        <div class="row">
+          <div class="row-head">
+            <a href="https://www.liquidroom.net/schedule" target="_blank" class="venue-link">恵比寿リキッドルーム</a>
+            <span class="badge badge-live">LIVE</span>
+          </div>
+          <div class="row-body"><p class="ev-title">TOUR 2025 “KANKEI FINAL”</p><p class="ev-artists">SITUASION</p><p class="ev-meta">18:30 / 19:00　優先(FC限定):¥5,000(税込・ドリンクチャージ別)手売りチケット:¥3,000(税込・ドリンクチャージ別)一般:¥2,500(税込・ドリンクチャージ別)後方:¥500(税込・ドリンクチャージ別)</p></div>
         </div>
-  </div>
-  <footer>自動収集 by GitHub Actions + Gemini AI</footer>
+  </main>
+  <footer>Auto-generated by GitHub Actions &amp; Gemini AI</footer>
 </body>
 </html>
