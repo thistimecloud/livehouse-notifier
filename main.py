@@ -209,8 +209,10 @@ def format_message(results: dict, target_date: datetime.date, url_map: dict = No
 
 def generate_html(results: dict, target_date: datetime.date, url_map: dict = None) -> str:
     """Generates a styled HTML page for GitHub Pages."""
-    date_str = target_date.strftime("%Y年%m月%d日 (%a)")
-    
+    weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
+    wd = weekdays_ja[target_date.weekday()]
+    date_str = target_date.strftime(f"%Y.%m.%d ({wd})")
+
     venue_blocks = ""
     for venue, events in results.items():
         url = url_map.get(venue, "#") if url_map else "#"
@@ -218,28 +220,40 @@ def generate_html(results: dict, target_date: datetime.date, url_map: dict = Non
             events = [events]
 
         live_events = [e for e in events if isinstance(e, dict) and e.get("has_live")]
-        errors = [e for e in events if isinstance(e, dict) and "error" in e]
+        has_error = any("error" in e for e in events if isinstance(e, dict))
 
-        if errors:
-            status_html = f'<p class="no-live">⚠️ 情報取得エラー</p>'
+        if has_error:
+            badge = '<span class="badge badge-error">ERR</span>'
+            detail = '<p class="no-live">情報取得エラー</p>'
         elif not live_events:
-            status_html = '<p class="no-live">❌ 公演なし / 予定なし</p>'
+            badge = '<span class="badge badge-off">—</span>'
+            detail = '<p class="no-live">公演なし</p>'
         else:
-            event_html_list = []
+            badge = '<span class="badge badge-live">LIVE</span>'
+            event_parts = []
             for i, info in enumerate(live_events):
-                sep = f'<p class="event-sep">── 公演 {i+1} ──</p>' if len(live_events) > 1 else ""
-                title_html = f'<p class="event-title">{info["title"]}</p>' if info.get("title") else ""
-                artists_html = f'<p class="event-artists">🎤 {", ".join(info["artists"])}</p>' if info.get("artists") else ""
-                time_html = f'<p class="event-meta">⏰ {info["open_start"]}</p>' if info.get("open_start") else ""
-                price_html = f'<p class="event-meta">💴 {info["adv_door"]}</p>' if info.get("adv_door") else ""
-                remarks_html = f'<p class="event-meta">📝 {info["remarks"]}</p>' if info.get("remarks") else ""
-                event_html_list.append(sep + title_html + artists_html + time_html + price_html + remarks_html)
-            status_html = "".join(event_html_list)
+                if len(live_events) > 1:
+                    event_parts.append(f'<p class="ev-num">/ {i+1}</p>')
+                if info.get("title"):
+                    event_parts.append(f'<p class="ev-title">{info["title"]}</p>')
+                if info.get("artists"):
+                    event_parts.append(f'<p class="ev-artists">{" / ".join(info["artists"])}</p>')
+                row = []
+                if info.get("open_start"): row.append(info["open_start"])
+                if info.get("adv_door"):   row.append(info["adv_door"])
+                if row:
+                    event_parts.append(f'<p class="ev-meta">{"　".join(row)}</p>')
+                if info.get("remarks"):
+                    event_parts.append(f'<p class="ev-meta">{info["remarks"]}</p>')
+            detail = "".join(event_parts)
 
         venue_blocks += f"""
-        <div class="card">
-          <a href="{url}" target="_blank" class="venue-name">{venue}</a>
-          {status_html}
+        <div class="row">
+          <div class="row-head">
+            <a href="{url}" target="_blank" class="venue-link">{venue}</a>
+            {badge}
+          </div>
+          <div class="row-body">{detail}</div>
         </div>"""
 
     html = f"""<!DOCTYPE html>
@@ -248,101 +262,139 @@ def generate_html(results: dict, target_date: datetime.date, url_map: dict = Non
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>今日のライブ</title>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@700;900&family=Inter:wght@400;500&display=swap" rel="stylesheet">
   <style>
-    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    *, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    :root {{
+      --bg: #111110;
+      --fg: #f0ece4;
+      --muted: #555550;
+      --accent: #f5e642;
+      --live-fg: #111110;
+      --err-bg: #ff4136;
+      --rule: rgba(240,236,228,0.1);
+    }}
     body {{
-      background: #0c0c14;
-      color: #e0e0f0;
-      font-family: 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      line-height: 1.5;
       min-height: 100vh;
-      padding: 16px;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 0 20px 60px;
     }}
     header {{
-      text-align: center;
-      padding: 28px 0 20px;
+      padding: 48px 0 36px;
+      border-bottom: 1px solid var(--rule);
     }}
-    header h1 {{
-      font-size: 1.8rem;
-      font-weight: 700;
-      background: linear-gradient(135deg, #a78bfa, #7c3aed);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }}
-    header p {{
-      color: #8888aa;
-      font-size: 0.85rem;
-      margin-top: 6px;
-    }}
-    .cards {{
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-      max-width: 540px;
-      margin: 0 auto;
-    }}
-    .card {{
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(167,139,250,0.2);
-      border-radius: 14px;
-      padding: 16px 18px;
-      backdrop-filter: blur(8px);
-    }}
-    .venue-name {{
-      display: block;
-      font-weight: 700;
-      font-size: 0.8rem;
-      letter-spacing: 0.08em;
+    .site-title {{
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 900;
+      font-size: clamp(3rem, 14vw, 5.5rem);
+      line-height: 0.92;
+      letter-spacing: -0.02em;
       text-transform: uppercase;
-      color: #a78bfa;
-      text-decoration: none;
+      color: var(--fg);
+    }}
+    .site-subtitle {{
+      margin-top: 14px;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }}
+    .site-date {{
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--accent);
+    }}
+    .row {{
+      border-bottom: 1px solid var(--rule);
+      padding: 22px 0;
+    }}
+    .row-head {{
+      display: flex;
+      align-items: center;
+      gap: 10px;
       margin-bottom: 8px;
     }}
-    .venue-name:hover {{ text-decoration: underline; }}
-    .event-title {{
-      font-size: 1rem;
-      font-weight: 600;
-      color: #f0f0ff;
+    .venue-link {{
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 1.15rem;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--fg);
+      text-decoration: none;
+    }}
+    .venue-link:hover {{ color: var(--accent); transition: color 0.15s; }}
+    .badge {{
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 0.65rem;
+      letter-spacing: 0.12em;
+      padding: 2px 6px;
+      border-radius: 2px;
+    }}
+    .badge-live {{ background: var(--accent); color: var(--live-fg); }}
+    .badge-off  {{ background: transparent; color: var(--muted); border: 1px solid var(--muted); }}
+    .badge-error{{ background: var(--err-bg); color: #fff; }}
+    .ev-num {{
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 0.75rem;
+      color: var(--accent);
+      letter-spacing: 0.1em;
       margin-bottom: 4px;
     }}
-    .event-artists {{
-      font-size: 0.88rem;
-      color: #c0c0e0;
-      margin-bottom: 6px;
+    .ev-title {{
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: clamp(1.3rem, 5vw, 1.7rem);
+      line-height: 1.1;
+      color: var(--fg);
+      margin-bottom: 4px;
     }}
-    .event-meta {{
-      font-size: 0.8rem;
-      color: #8888aa;
-      margin-top: 3px;
+    .ev-artists {{
+      font-size: 12px;
+      color: var(--fg);
+      opacity: 0.7;
+      margin-bottom: 4px;
     }}
-    .event-sep {{
-      font-size: 0.75rem;
-      color: #7c3aed;
-      margin: 10px 0 6px;
+    .ev-meta {{
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
     }}
     .no-live {{
-      font-size: 0.85rem;
-      color: #555577;
+      font-size: 12px;
+      color: var(--muted);
     }}
     footer {{
-      text-align: center;
-      color: #444466;
-      font-size: 0.75rem;
-      padding: 28px 0 16px;
+      margin-top: 48px;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--muted);
     }}
   </style>
 </head>
 <body>
   <header>
-    <h1>🎸 今日のライブ</h1>
-    <p>{date_str} 更新</p>
+    <h1 class="site-title">今日の<br>ライブ</h1>
+    <p class="site-subtitle">Tokyo Live Schedule</p>
+    <p class="site-date">{date_str}</p>
   </header>
-  <div class="cards">{venue_blocks}
-  </div>
-  <footer>自動収集 by GitHub Actions + Gemini AI</footer>
+  <main>{venue_blocks}
+  </main>
+  <footer>Auto-generated by GitHub Actions &amp; Gemini AI</footer>
 </body>
 </html>"""
     return html
+
 
 def save_html(html_content: str):
     """Saves the HTML to docs/index.html for GitHub Pages."""
