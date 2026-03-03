@@ -207,6 +207,150 @@ def format_message(results: dict, target_date: datetime.date, url_map: dict = No
         
     return message
 
+def generate_html(results: dict, target_date: datetime.date, url_map: dict = None) -> str:
+    """Generates a styled HTML page for GitHub Pages."""
+    date_str = target_date.strftime("%Y年%m月%d日 (%a)")
+    
+    venue_blocks = ""
+    for venue, events in results.items():
+        url = url_map.get(venue, "#") if url_map else "#"
+        if isinstance(events, dict):
+            events = [events]
+
+        live_events = [e for e in events if isinstance(e, dict) and e.get("has_live")]
+        errors = [e for e in events if isinstance(e, dict) and "error" in e]
+
+        if errors:
+            status_html = f'<p class="no-live">⚠️ 情報取得エラー</p>'
+        elif not live_events:
+            status_html = '<p class="no-live">❌ 公演なし / 予定なし</p>'
+        else:
+            event_html_list = []
+            for i, info in enumerate(live_events):
+                sep = f'<p class="event-sep">── 公演 {i+1} ──</p>' if len(live_events) > 1 else ""
+                title_html = f'<p class="event-title">{info["title"]}</p>' if info.get("title") else ""
+                artists_html = f'<p class="event-artists">🎤 {", ".join(info["artists"])}</p>' if info.get("artists") else ""
+                time_html = f'<p class="event-meta">⏰ {info["open_start"]}</p>' if info.get("open_start") else ""
+                price_html = f'<p class="event-meta">💴 {info["adv_door"]}</p>' if info.get("adv_door") else ""
+                remarks_html = f'<p class="event-meta">📝 {info["remarks"]}</p>' if info.get("remarks") else ""
+                event_html_list.append(sep + title_html + artists_html + time_html + price_html + remarks_html)
+            status_html = "".join(event_html_list)
+
+        venue_blocks += f"""
+        <div class="card">
+          <a href="{url}" target="_blank" class="venue-name">{venue}</a>
+          {status_html}
+        </div>"""
+
+    html = f"""<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>今日のライブ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+    body {{
+      background: #0c0c14;
+      color: #e0e0f0;
+      font-family: 'Outfit', sans-serif;
+      min-height: 100vh;
+      padding: 16px;
+    }}
+    header {{
+      text-align: center;
+      padding: 28px 0 20px;
+    }}
+    header h1 {{
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #a78bfa, #7c3aed);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }}
+    header p {{
+      color: #8888aa;
+      font-size: 0.85rem;
+      margin-top: 6px;
+    }}
+    .cards {{
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      max-width: 540px;
+      margin: 0 auto;
+    }}
+    .card {{
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(167,139,250,0.2);
+      border-radius: 14px;
+      padding: 16px 18px;
+      backdrop-filter: blur(8px);
+    }}
+    .venue-name {{
+      display: block;
+      font-weight: 700;
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #a78bfa;
+      text-decoration: none;
+      margin-bottom: 8px;
+    }}
+    .venue-name:hover {{ text-decoration: underline; }}
+    .event-title {{
+      font-size: 1rem;
+      font-weight: 600;
+      color: #f0f0ff;
+      margin-bottom: 4px;
+    }}
+    .event-artists {{
+      font-size: 0.88rem;
+      color: #c0c0e0;
+      margin-bottom: 6px;
+    }}
+    .event-meta {{
+      font-size: 0.8rem;
+      color: #8888aa;
+      margin-top: 3px;
+    }}
+    .event-sep {{
+      font-size: 0.75rem;
+      color: #7c3aed;
+      margin: 10px 0 6px;
+    }}
+    .no-live {{
+      font-size: 0.85rem;
+      color: #555577;
+    }}
+    footer {{
+      text-align: center;
+      color: #444466;
+      font-size: 0.75rem;
+      padding: 28px 0 16px;
+    }}
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🎸 今日のライブ</h1>
+    <p>{date_str} 更新</p>
+  </header>
+  <div class="cards">{venue_blocks}
+  </div>
+  <footer>自動収集 by GitHub Actions + Gemini AI</footer>
+</body>
+</html>"""
+    return html
+
+def save_html(html_content: str):
+    """Saves the HTML to docs/index.html for GitHub Pages."""
+    os.makedirs("docs", exist_ok=True)
+    with open("docs/index.html", "w", encoding="utf-8") as f:
+        f.write(html_content)
+    print("HTML saved to docs/index.html")
+
 def send_email(subject: str, body: str):
     if not all([EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_RECEIVER]):
         print("Email configuration is incomplete. Skipping.")
@@ -277,6 +421,10 @@ def main():
     print(final_message)
     print("-----------------------\n")
     
+    print("\nGenerating HTML for GitHub Pages...")
+    html_content = generate_html(all_results, today, url_map=TARGETS)
+    save_html(html_content)
+
     print("Sending notifications...")
     date_str = today.strftime("%Y/%m/%d")
     subject = f"🎸 本日のライブ情報 ({date_str})"
