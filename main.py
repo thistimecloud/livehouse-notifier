@@ -35,7 +35,19 @@ TARGETS = {
     "吉祥寺WARP": "http://warp.rinky.info/schedules",
     "渋谷クラブクアトロ": "https://www.club-quattro.com/shibuya/",
     "恵比寿リキッドルーム": "https://www.liquidroom.net/schedule",
+    "新宿Marble": "https://shinjuku-marble.com/schedule/",
 }
+
+# Area Categories
+VENUE_CATEGORIES = {
+    "ERA": "下北沢", "Three": "下北沢", "近松": "下北沢", "近道": "下北沢", 
+    "mona records": "下北沢", "FEVER": "下北沢", "BASEMENTBAR": "下北沢", "SHELTER": "下北沢",
+    "WWW/X": "渋谷", "O-Crest": "渋谷", "TOKIO TOKYO": "渋谷", "渋谷クラブクアトロ": "渋谷",
+    "Nine Spices": "新宿", "新宿Marble": "新宿",
+}
+
+CATEGORY_ORDER = ["下北沢", "渋谷", "新宿", "その他"]
+
 
 def setup_gemini():
     if not GEMINI_API_KEY:
@@ -184,89 +196,118 @@ def extract_schedule_with_gemini(venue_name: str, text_content: str, target_date
 # --- Formatting & Notification ---
 
 def format_message(results: dict, target_date: datetime.date, url_map: dict = None) -> str:
-    """Formats the extracted results into a plain text message string matching previous nice format."""
+    """Formats the extracted results into a plain text message string, grouped by category."""
     date_str = target_date.strftime("%m/%d(%a)")
     message = f"🎸 本日 {date_str} のライブ情報 🎸\n"
     message += "=" * 30 + "\n"
     
-    for venue, events in results.items():
-        url = url_map.get(venue, "") if url_map else ""
-        if url:
-            message += f"\n📍 【[{venue}]({url})】\n"
-        else:
-            message += f"\n📍 【{venue}】\n"
-        # Normalize to list (supports both old dict format and new list format)
-        if isinstance(events, dict):
-            events = [events]
+    # Group results by category
+    grouped_results = {cat: [] for cat in CATEGORY_ORDER}
+    for venue in results.keys():
+        cat = VENUE_CATEGORIES.get(venue, "その他")
+        grouped_results[cat].append(venue)
+
+    for cat in CATEGORY_ORDER:
+        venues_in_cat = grouped_results[cat]
+        if not venues_in_cat:
+            continue
+            
+        message += f"\n🏙️ --- {cat}エリア ---\n"
         
-        live_events = [e for e in events if isinstance(e, dict) and e.get("has_live")]
-        errors = [e for e in events if isinstance(e, dict) and "error" in e]
-        
-        if errors:
-            message += f"⚠️ 情報取得エラー: {errors[0].get('error', 'Unknown Error')}\n"
-        elif not live_events:
-            message += "❌ 公演なし / 予定なし\n"
-        else:
-            for i, info in enumerate(live_events):
-                if len(live_events) > 1:
-                    message += f"--- 公演 {i+1} ---\n"
-                if info.get("title"): message += f"🏷️ {info['title']}\n"
-                if info.get("artists"): message += f"🎤 {', '.join(info['artists'])}\n"
-                if info.get("open_start"): message += f"⌚ {info['open_start']}\n"
-                if info.get("adv_door"): message += f"💴 {info['adv_door']}\n"
-                if info.get("remarks"): message += f"📝 {info['remarks']}\n"
-        message += "-" * 30 + "\n"
+        for venue in venues_in_cat:
+            events = results[venue]
+            url = url_map.get(venue, "") if url_map else ""
+            if url:
+                message += f"\n📍 【[{venue}]({url})】\n"
+            else:
+                message += f"\n📍 【{venue}】\n"
+                
+            # Normalize to list
+            if isinstance(events, dict):
+                events = [events]
+            
+            live_events = [e for e in events if isinstance(e, dict) and e.get("has_live")]
+            errors = [e for e in events if isinstance(e, dict) and "error" in e]
+            
+            if errors:
+                message += f"⚠️ 情報取得エラー: {errors[0].get('error', 'Unknown Error')}\n"
+            elif not live_events:
+                message += "❌ 公演なし / 予定なし\n"
+            else:
+                for i, info in enumerate(live_events):
+                    if len(live_events) > 1:
+                        message += f"--- 公演 {i+1} ---\n"
+                    if info.get("title"): message += f"🏷️ {info['title']}\n"
+                    if info.get("artists"): message += f"🎤 {', '.join(info['artists'])}\n"
+                    if info.get("open_start"): message += f"⌚ {info['open_start']}\n"
+                    if info.get("adv_door"): message += f"💴 {info['adv_door']}\n"
+                    if info.get("remarks"): message += f"📝 {info['remarks']}\n"
+            message += "-" * 15 + "\n"
         
     return message
 
 def generate_html(results: dict, target_date: datetime.date, url_map: dict = None) -> str:
-    """Generates a styled HTML page for GitHub Pages."""
+    """Generates a styled HTML page grouped by category."""
     weekdays_ja = ["月", "火", "水", "木", "金", "土", "日"]
     wd = weekdays_ja[target_date.weekday()]
     date_str = target_date.strftime(f"%Y.%m.%d ({wd})")
 
-    venue_blocks = ""
-    for venue, events in results.items():
-        url = url_map.get(venue, "#") if url_map else "#"
-        if isinstance(events, dict):
-            events = [events]
+    # Group results by category
+    grouped_results = {cat: [] for cat in CATEGORY_ORDER}
+    for venue in results.keys():
+        cat = VENUE_CATEGORIES.get(venue, "その他")
+        grouped_results[cat].append(venue)
 
-        live_events = [e for e in events if isinstance(e, dict) and e.get("has_live")]
-        has_error = any("error" in e for e in events if isinstance(e, dict))
+    sections_html = ""
+    for cat in CATEGORY_ORDER:
+        venues_in_cat = grouped_results[cat]
+        if not venues_in_cat:
+            continue
+            
+        sections_html += f'<div class="category-header">{cat} AREA</div>'
+        
+        for venue in venues_in_cat:
+            events = results[venue]
+            url = url_map.get(venue, "#") if url_map else "#"
+            if isinstance(events, dict):
+                events = [events]
 
-        if has_error:
-            badge = '<span class="badge badge-error">ERR</span>'
-            detail = '<p class="no-live">情報取得エラー</p>'
-        elif not live_events:
-            badge = '<span class="badge badge-off">—</span>'
-            detail = '<p class="no-live">公演なし</p>'
-        else:
-            badge = '<span class="badge badge-live">LIVE</span>'
-            event_parts = []
-            for i, info in enumerate(live_events):
-                if len(live_events) > 1:
-                    event_parts.append(f'<p class="ev-num">/ {i+1}</p>')
-                if info.get("title"):
-                    event_parts.append(f'<p class="ev-title">{info["title"]}</p>')
-                if info.get("artists"):
-                    event_parts.append(f'<p class="ev-artists">{" / ".join(info["artists"])}</p>')
-                row = []
-                if info.get("open_start"): row.append(info["open_start"])
-                if info.get("adv_door"):   row.append(info["adv_door"])
-                if row:
-                    event_parts.append(f'<p class="ev-meta">{"　".join(row)}</p>')
-                if info.get("remarks"):
-                    event_parts.append(f'<p class="ev-meta">{info["remarks"]}</p>')
-            detail = "".join(event_parts)
+            live_events = [e for e in events if isinstance(e, dict) and e.get("has_live")]
+            has_error = any("error" in e for e in events if isinstance(e, dict))
 
-        venue_blocks += f"""
-        <div class="row">
-          <div class="row-head">
-            <a href="{url}" target="_blank" class="venue-link">{venue}</a>
-            {badge}
-          </div>
-          <div class="row-body">{detail}</div>
-        </div>"""
+            if has_error:
+                badge = '<span class="badge badge-error">ERR</span>'
+                detail = '<p class="no-live">情報取得エラー</p>'
+            elif not live_events:
+                badge = '<span class="badge badge-off">—</span>'
+                detail = '<p class="no-live">公演なし</p>'
+            else:
+                badge = '<span class="badge badge-live">LIVE</span>'
+                event_parts = []
+                for i, info in enumerate(live_events):
+                    if len(live_events) > 1:
+                        event_parts.append(f'<p class="ev-num">/ {i+1}</p>')
+                    if info.get("title"):
+                        event_parts.append(f'<p class="ev-title">{info["title"]}</p>')
+                    if info.get("artists"):
+                        event_parts.append(f'<p class="ev-artists">{" / ".join(info["artists"])}</p>')
+                    row = []
+                    if info.get("open_start"): row.append(info["open_start"])
+                    if info.get("adv_door"):   row.append(info["adv_door"])
+                    if row:
+                        event_parts.append(f'<p class="ev-meta">{"　".join(row)}</p>')
+                    if info.get("remarks"):
+                        event_parts.append(f'<p class="ev-meta">{info["remarks"]}</p>')
+                detail = "".join(event_parts)
+
+            sections_html += f"""
+            <div class="row">
+              <div class="row-head">
+                <a href="{url}" target="_blank" class="venue-link">{venue}</a>
+                {badge}
+              </div>
+              <div class="row-body">{detail}</div>
+            </div>"""
 
     html = f"""<!DOCTYPE html>
 <html lang="ja">
@@ -323,6 +364,17 @@ def generate_html(results: dict, target_date: datetime.date, url_map: dict = Non
       font-size: 11px;
       letter-spacing: 0.14em;
       color: var(--accent);
+    }}
+    .category-header {{
+      margin-top: 50px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      letter-spacing: 0.2em;
+      color: var(--muted);
+      border-left: 2px solid var(--accent);
+      padding-left: 10px;
+      margin-bottom: 5px;
     }}
     .row {{
       border-bottom: 1px solid var(--rule);
@@ -400,7 +452,7 @@ def generate_html(results: dict, target_date: datetime.date, url_map: dict = Non
     <p class="site-subtitle">Tokyo Live Schedule</p>
     <p class="site-date">{date_str}</p>
   </header>
-  <main>{venue_blocks}
+  <main>{sections_html}
   </main>
   <footer>Auto-generated by GitHub Actions &amp; Gemini AI</footer>
 </body>
