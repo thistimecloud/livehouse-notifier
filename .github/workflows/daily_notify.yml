@@ -1,8 +1,8 @@
 name: Daily Livehouse Notifier
 on:
   schedule:
-    # 毎日 日本時間 09:00 (UTC 00:00) 頃に届くように、混雑を避けて 08:45 (UTC 23:45) に実行開始
-    - cron: '45 23 * * *'
+    # GitHubの遅延を見越して、日本時間 06:00 (UTC 21:00) に登録（数時間遅れて9時頃に届くことを想定）
+    - cron: '0 21 * * *'
   workflow_dispatch: # GitHubの画面から手動実行も可能にする設定
 permissions:
   contents: write  # docs/index.html をコミット・プッシュするために必要
@@ -24,6 +24,7 @@ jobs:
         playwright install chromium --with-deps
     - name: Run main script
       env:
+        TZ: "Asia/Tokyo"  # 日本時間に固定（これがないと朝9時前に実行された時に昨日の日付になる）
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
         EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
