@@ -65,7 +65,7 @@ def fetch_website_text(url: str, venue_name: str, target_date: datetime.date) ->
             base = "events/event/on/"
         else:
             base = "event/on/"
-        target_url = f"{url}{base}{target_date.year:04d}/{target_date.month:02d}/"
+        target_url = f"{url}{base}{target_date.year:04d}/{target_date.month:02d}/{target_date.day:02d}/"
     elif venue_name == "FEVER":
         target_url = f"{url}{target_date.year:04d}/{target_date.month:02d}/"
 
