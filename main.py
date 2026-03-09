@@ -61,7 +61,10 @@ def fetch_website_text(url: str, venue_name: str, target_date: datetime.date) ->
     if "chikamatsu" in target_url or "chikamichi" in target_url:
         target_url = f"{url}{target_date.year:04d}/{target_date.month:02d}/"
     elif venue_name in ["Three", "BASEMENTBAR"]:
-        base = "events/event/on/" if venue_name == "Three" else "event/on/"
+        if venue_name == "Three":
+            base = "events/event/on/"
+        else:
+            base = "event/on/"
         target_url = f"{url}{base}{target_date.year:04d}/{target_date.month:02d}/"
     elif venue_name == "FEVER":
         target_url = f"{url}{target_date.year:04d}/{target_date.month:02d}/"
