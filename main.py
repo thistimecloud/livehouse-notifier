@@ -8,7 +8,7 @@ import ast
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from bs4 import BeautifulSoup
-import google.generativeai as genai
+from google import genai
 from playwright.sync_api import sync_playwright
 
 # --- Configuration ---
@@ -52,7 +52,7 @@ CATEGORY_ORDER = ["下北沢", "渋谷", "新宿", "その他"]
 def setup_gemini():
     if not GEMINI_API_KEY:
          raise ValueError("GEMINI_API_KEY is not set.")
-    genai.configure(api_key=GEMINI_API_KEY)
+    return genai.Client(api_key=GEMINI_API_KEY)
 
 def fetch_website_text(url: str, venue_name: str, target_date: datetime.date) -> str:
     """Fetches text content from a URL via BeautifulSoup or Playwright for dynamic sites."""
@@ -105,7 +105,7 @@ def fetch_website_text(url: str, venue_name: str, target_date: datetime.date) ->
         print(f"Error fetching {target_url}: {e}")
         return None
 
-def extract_schedule_with_gemini(venue_name: str, text_content: str, target_date: datetime.date) -> dict:
+def extract_schedule_with_gemini(venue_name: str, text_content: str, target_date: datetime.date, client=None) -> dict:
     """Uses Gemini API to extract details from the webpage text."""
     if not text_content:
         return {"error": "取得失敗 (テキストなし)"}
@@ -141,23 +141,22 @@ def extract_schedule_with_gemini(venue_name: str, text_content: str, target_date
 {text_content}
 """
 
-    # Using gemini-2.0-flash as the best general capability model. 
-    # If the user hits Limit: 0 on 2.0-flash, we will try 1.5-flash-8b.
+    # Use new google-genai SDK (google-generativeai was deprecated Nov 2025)
     try:
-        model = genai.GenerativeModel(
-            model_name="gemini-2.5-flash",
-            generation_config=genai.types.GenerationConfig(temperature=0.1)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=prompt,
+            config=genai.types.GenerateContentConfig(temperature=0.1)
         )
-        response = model.generate_content(prompt)
     except Exception as e:
         print(f"Request failed with gemini-2.5-flash: {e}")
-        print("Falling back to gemini-flash-latest...")
+        print("Falling back to gemini-2.0-flash...")
         try:
-            model = genai.GenerativeModel(
-                model_name="gemini-flash-latest",
-                generation_config=genai.types.GenerationConfig(temperature=0.1)
+            response = client.models.generate_content(
+                model="gemini-2.0-flash",
+                contents=prompt,
+                config=genai.types.GenerateContentConfig(temperature=0.1)
             )
-            response = model.generate_content(prompt)
         except Exception as e2:
              print(f"Gemini API Error for {venue_name}: {e2}")
              return {"error": "Gemini API エラー (課金・リミット制限の可能性)"}
@@ -506,7 +505,7 @@ def send_discord_webhook(message: str):
 
 def main():
     try:
-        setup_gemini()
+        client = setup_gemini()
     except Exception as e:
         print(e)
         return
@@ -526,7 +525,7 @@ def main():
             continue
             
         print(f"AI parsing for {venue_name}...")
-        info = extract_schedule_with_gemini(venue_name, text_content, today)
+        info = extract_schedule_with_gemini(venue_name, text_content, today, client=client)
         all_results[venue_name] = info
         
         # Crucial delay to prevent hitting free tier rate limits (15 TPM on free models)
