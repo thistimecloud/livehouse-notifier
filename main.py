@@ -66,8 +66,8 @@ def fetch_website_text(url: str, venue_name: str, target_date: datetime.date) ->
         else:
             base = "event/on/"
         target_url = f"{url}{base}{target_date.year:04d}/{target_date.month:02d}/{target_date.day:02d}/"
-    elif venue_name == "FEVER":
-        target_url = f"{url}{target_date.year:04d}/{target_date.month:02d}/"
+ elif venue_name == "FEVER":
+    target_url = f"{url}{target_date.year:04d}/{target_date.month:02d}/{target_date.day:02d}/"
 
     # For TOKIO TOKYO (Nuxt SPA), we MUST use Playwright to execute JS
     if venue_name == "TOKIO TOKYO":
