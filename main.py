@@ -28,7 +28,7 @@ TARGETS = {
     "近松": "https://chikamatsu-nite.com/schedule/",
     "近道": "https://chikamichi-otemae.com/chikamichi/",
     "mona records": "https://www.mona-records.com/",
-    "FEVER": "https://www.fever-popo.com/schedule/",
+    "FEVER": "https://www.fever-popo.com/",
     "BASEMENTBAR": "https://toos.co.jp/basementbar/",
     "SHELTER": "https://www.loft-prj.co.jp/schedule/shelter/",
     "Nine Spices": "https://9spices.rinky.info/schedule/",
@@ -67,7 +67,8 @@ def fetch_website_text(url: str, venue_name: str, target_date: datetime.date) ->
             base = "event/on/"
         target_url = f"{url}{base}{target_date.year:04d}/{target_date.month:02d}/{target_date.day:02d}/"
     elif venue_name == "FEVER":
-        target_url = f"{url}{target_date.year:04d}/{target_date.month:02d}/{target_date.day:02d}/"
+        # 辞書のURLがルート(https://www.fever-popo.com/)に変更されたため、schedule/をここで補完
+        target_url = f"{url}schedule/{target_date.year:04d}/{target_date.month:02d}/{target_date.day:02d}/"
 
     # For TOKIO TOKYO (Nuxt SPA), we MUST use Playwright to execute JS
     if venue_name == "TOKIO TOKYO":
