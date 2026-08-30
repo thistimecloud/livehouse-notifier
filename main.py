@@ -28,7 +28,7 @@ TARGETS = {
     "近松": "https://chikamatsu-nite.com/schedule/",
     "近道": "https://chikamichi-otemae.com/chikamichi/",
     "mona records": "https://www.mona-records.com/",
-    "FEVER": "https://www.fever-popo.com/schedule/",
+    "FEVER": "https://www.fever-popo.com/",
     "BASEMENTBAR": "https://toos.co.jp/basementbar/",
     "SHELTER": "https://www.loft-prj.co.jp/schedule/shelter/",
     "Nine Spices": "https://9spices.rinky.info/schedule/",
