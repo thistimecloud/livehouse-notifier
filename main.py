@@ -28,7 +28,7 @@ TARGETS = {
     "近松": "https://chikamatsu-nite.com/schedule/",
     "近道": "https://chikamichi-otemae.com/chikamichi/",
     "mona records": "https://www.mona-records.com/",
-    "FEVER": "https://www.fever-popo.com/",
+    "FEVER": "https://www.fever-popo.com/schedule/",
     "BASEMENTBAR": "https://toos.co.jp/basementbar/",
     "SHELTER": "https://www.loft-prj.co.jp/schedule/shelter/",
     "Nine Spices": "https://9spices.rinky.info/schedule/",
@@ -113,11 +113,12 @@ def extract_schedule_with_gemini(venue_name: str, text_content: str, target_date
     date_str_long = target_date.strftime("%Y年%m月%d日")
     date_str_short = target_date.strftime("%m/%d")
     date_str_short2 = f"{target_date.month}.{target_date.day}"
+    date_str_fever = target_date.strftime("%y.%m.%d") # FEVER用 (例: 26.08.30)
     dd = str(target_date.day)
 
     prompt = f"""
 以下はライブハウス「{venue_name}」のスケジュールページのテキストデータです。
-この中から、指定された日付（{date_str_long} または {date_str_short} または {date_str_short2} または単なる「{dd}日」など）に行われるライブ・イベントの情報をすべて抽出してください。
+この中から、指定された日付（{date_str_long} または {date_str_short} または {date_str_short2} または {date_str_fever} または単なる「{dd}日」など）に行われるライブ・イベントの情報をすべて抽出してください。
 
 テキストには複数の日付の情報が含まれていますが、必ず指定された日の情報だけを抜き出してください。
 同じ日に複数のイベントがある場合は、すべて含めてください。
