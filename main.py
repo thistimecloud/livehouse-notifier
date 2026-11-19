@@ -24,7 +24,7 @@ TARGETS = {
     "O-Crest": "https://shibuya-o.com/crest/schedule/",
     "TOKIO TOKYO": "https://tokio.world/schedule",
     "ERA": "http://s-era.jp/schedule",
-    "Three": "https://www.toos.co.jp/3/",
+    "Three": "https://toos.co.jp/3/",
     "近松": "https://chikamatsu-nite.com/schedule/",
     "近道": "https://chikamichi-otemae.com/chikamichi/",
     "mona records": "https://www.mona-records.com/",
@@ -60,12 +60,6 @@ def fetch_website_text(url: str, venue_name: str, target_date: datetime.date) ->
     target_url = url
     if "chikamatsu" in target_url or "chikamichi" in target_url:
         target_url = f"{url}{target_date.year:04d}/{target_date.month:02d}/"
-    elif venue_name in ["Three", "BASEMENTBAR"]:
-        if venue_name == "Three":
-            base = "events/event/on/"
-        else:
-            base = "event/on/"
-        target_url = f"{url}{base}{target_date.year:04d}/{target_date.month:02d}/{target_date.day:02d}/"
     elif venue_name == "FEVER":
         # 辞書のURLがルート(https://www.fever-popo.com/)に変更されたため、schedule/をここで補完
         target_url = f"{url}schedule/{target_date.year:04d}/{target_date.month:02d}/{target_date.day:02d}/"
